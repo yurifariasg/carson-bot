@@ -22,7 +22,7 @@ const bot = new Telegraf(TOKEN, { telegram: { webhookReply: true } })
 
 const session = new RedisSession({
   store: {
-    host: 'ygomes.ddns.net',
+    host: getSecret('redishostname'),
     port: 6379,
     password: getSecret('redispass'),
   },

@@ -2,6 +2,7 @@
   "env": {
     "DEBUG": "telegra*",
     "TELEGRAMTOKEN": "@telegramtoken",
-    "REDISPASS": "@redispass"
+    "REDISPASS": "@redispass",
+    "REDISHOSTNAME": "@redishostname"
   }
 }

@@ -1,17 +1,23 @@
-import { clone, flatten } from 'ramda'
-import { Ingredient } from '../../data/recipes'
 import { recipes } from '../../data/recipes'
 import { BotContext } from '../../types'
 import {
   InlineKeyboardButton,
   ExtraEditMessage,
 } from 'telegraf/typings/telegram-types'
+import {
+  aggregateIngredients,
+  getAllIngredientsFor,
+  shiftArrayBy,
+} from './dinnerUtils'
 
 const SAVED_OPTIONS_KEY = 'savedOptions'
 const CHOSEN_OPTIONS_KEY = 'chosenOptions'
 
-const FINISH_OPTION = 'end'
+const MAX_OPTIONS = 2
+const FINISH_OPTION = 'finish'
+const MORE_OPTION = 'more...'
 
+// TODO: Future, add algorithm to change ordering of these.
 const createDinnerOptions = (): string[] => recipes.map(r => r.name)
 
 const getSavedOptions = (ctx: BotContext): string[] =>
@@ -33,104 +39,87 @@ function createDinnerStr(dinnerOptions: string[] = []): string {
 
 function createInlineKeyboard(
   savedOptions: string[],
-  chosenOptions: string[],
 ): InlineKeyboardButton[][] {
   return savedOptions
-    .filter(savedOption => !chosenOptions.includes(savedOption))
-    .concat(FINISH_OPTION)
+    .slice(0, MAX_OPTIONS)
     .map(option => [
       {
         text: option,
         callback_data: option,
       },
     ])
+    .concat([
+      [
+        { text: FINISH_OPTION, callback_data: FINISH_OPTION },
+        { text: MORE_OPTION, callback_data: MORE_OPTION },
+      ],
+    ])
 }
 
-const getKeyboardExtraForContext = (ctx: BotContext): ExtraEditMessage => ({
+const getKeyboardExtraForContext = (
+  savedOptions: string[],
+): ExtraEditMessage => ({
   reply_markup: {
-    inline_keyboard: createInlineKeyboard(
-      getSavedOptions(ctx),
-      getChosenOptions(ctx),
-    ),
+    inline_keyboard: createInlineKeyboard(savedOptions),
   },
 })
 
 export const dinnerHandler = (ctx: BotContext): void => {
   ctx.session[SAVED_OPTIONS_KEY] = createDinnerOptions()
-  ctx.reply(createDinnerStr(), getKeyboardExtraForContext(ctx))
+  ctx.reply(createDinnerStr(), getKeyboardExtraForContext(getSavedOptions(ctx)))
 }
 
-const addChosenOption = (ctx: BotContext, option: string): void => {
+const addChosenOptionToSession = (ctx: BotContext, option: string): void => {
   ctx.session[CHOSEN_OPTIONS_KEY] = getChosenOptions(ctx).concat(option)
-}
-
-function getAllIngredientsFor(options: string[]): Ingredient[] {
-  return flatten(
-    recipes.filter(r => options.includes(r.name)).map(r => r.ingredients),
+  const newSavedOptions = getSavedOptions(ctx).filter(
+    savedOption => !option.includes(savedOption),
   )
+  ctx.session[SAVED_OPTIONS_KEY] = newSavedOptions
 }
 
-const ingredientAlphabeticallySorter = (a: Ingredient, b: Ingredient): number =>
-  a.name.localeCompare(b.name)
+function handleFinishOption(ctx: BotContext): void {
+  const chosenOptions = getChosenOptions(ctx)
 
-function aggregateQuantities(quantityA: string, quantityB: string): string {
-  const intA = Number(quantityA)
-  const intB = Number(quantityB)
-  if (intA && intB) {
-    return (intA + intB).toString()
-  } else {
-    return quantityA + ', ' + quantityB
-  }
+  const ingredients = aggregateIngredients(getAllIngredientsFor(chosenOptions))
+  const ingredientsMessage = ingredients
+    .map(i => i.name + ' ' + i.quantity)
+    .join('\n')
+
+  ctx.editMessageText(
+    `Selected Options: ${chosenOptions.join(',')}\n` +
+      'Ingredients:\n' +
+      ingredientsMessage,
+  )
+  clearOptions(ctx)
 }
 
-export function aggregateIngredients(ingredients: Ingredient[]): Ingredient[] {
-  const sortedIngredients = ingredients.sort(ingredientAlphabeticallySorter)
-  const aggregateIngredients: Ingredient[] = []
-  for (let index = 0; index < sortedIngredients.length; index++) {
-    const previousIngredient =
-      aggregateIngredients.length > 0
-        ? aggregateIngredients[aggregateIngredients.length - 1]
-        : undefined
-    const ingredient = sortedIngredients[index]
-    if (previousIngredient && previousIngredient.name === ingredient.name) {
-      previousIngredient.quantity = aggregateQuantities(
-        previousIngredient.quantity,
-        ingredient.quantity,
-      )
-    } else {
-      aggregateIngredients.push(clone(ingredient))
-    }
-  }
-  return aggregateIngredients
+function handleMoreOption(ctx: BotContext): void {
+  const chosenOptions = getChosenOptions(ctx)
+  const savedOptions = getSavedOptions(ctx)
+
+  shiftArrayBy(MAX_OPTIONS, savedOptions)
+
+  ctx.session[SAVED_OPTIONS_KEY] = savedOptions
+
+  ctx.editMessageText(
+    createDinnerStr(chosenOptions),
+    getKeyboardExtraForContext(savedOptions),
+  )
 }
 
 export const dinnerCallback = (ctx: BotContext): void => {
   const chosenOption = ctx.callbackQuery?.data ?? ''
 
-  const chosenFinishOption = chosenOption === FINISH_OPTION
-  if (!chosenFinishOption) {
-    addChosenOption(ctx, chosenOption)
-  }
-  const chosenOptions = getChosenOptions(ctx)
-
-  if (chosenFinishOption) {
-    const ingredients = aggregateIngredients(
-      getAllIngredientsFor(chosenOptions),
-    )
-    const ingredientsMessage = ingredients
-      .map(i => i.name + ' ' + i.quantity)
-      .join('\n')
-
-    ctx.editMessageText(
-      `Selected Options: ${chosenOptions.join(',')}\n` +
-        'Ingredients:\n' +
-        ingredientsMessage,
-    )
-    clearOptions(ctx)
+  if (chosenOption === FINISH_OPTION) {
+    handleFinishOption(ctx)
+  } else if (chosenOption === MORE_OPTION) {
+    handleMoreOption(ctx)
   } else {
+    addChosenOptionToSession(ctx, chosenOption)
+    const chosenOptions = getChosenOptions(ctx)
     ctx.editMessageText(
       createDinnerStr(chosenOptions),
-      !chosenFinishOption ? getKeyboardExtraForContext(ctx) : undefined,
+      getKeyboardExtraForContext(getSavedOptions(ctx)),
     )
   }
 }

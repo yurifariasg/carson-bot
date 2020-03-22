@@ -1,6 +1,6 @@
-import { Ingredient } from './../../../data/recipes'
+import { Ingredient } from '../../../data/recipes'
 import test from 'ava'
-import { aggregateIngredients } from '../dinnerMiddleware'
+import { shiftArrayBy, aggregateIngredients } from '../dinnerUtils'
 
 test('aggregates ingredients properly', t => {
   const numberIngredients: Ingredient[] = [
@@ -36,4 +36,10 @@ test('aggregates ingredients properly', t => {
       quantity: '5.2',
     },
   ])
+})
+
+test('shifts arrays correctly', t => {
+  const array = [1, 2, 3, 4]
+  shiftArrayBy(2, array)
+  t.deepEqual(array, [3, 4, 1, 2])
 })

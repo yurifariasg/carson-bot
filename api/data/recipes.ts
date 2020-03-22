@@ -55,4 +55,19 @@ export const recipes: Recipe[] = [
       { name: 'Feldsalat', quantity: '1 Packung' },
     ],
   },
+  {
+    name: 'Gebackene Käse-Tortillas',
+    ingredients: [
+      { name: 'rote Ziebel', quantity: '1' },
+      { name: 'Weißweinessig', quantity: '12ml' },
+      { name: 'schwarze Bohnen', quantity: '380g' },
+      { name: 'Limette', quantity: '1' },
+      { name: 'Gewuurzmischung "HelloMexico"', quantity: '2g' },
+      { name: 'Tomate', quantity: '1' },
+      { name: 'grüne Chilischote', quantity: '1' },
+      { name: 'Avocado', quantity: '1' },
+      { name: 'Tortilla-Wraps', quantity: '4' },
+      { name: 'Cheddar', quantity: '50g' },
+    ],
+  },
 ]
