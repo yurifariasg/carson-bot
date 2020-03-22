@@ -27,6 +27,8 @@ const session = new RedisSession({
     password: getSecret('redispass'),
   },
   ttl: 86400,
+  getSessionKey: (ctx: BotContext): string =>
+    ctx.chat?.id?.toString() ?? 'global',
 })
 
 bot.use(session.middleware())

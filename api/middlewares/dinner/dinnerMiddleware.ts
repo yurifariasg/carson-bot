@@ -74,7 +74,9 @@ export const dinnerHandler = (ctx: BotContext): void => {
 }
 
 const addChosenOptionToSession = (ctx: BotContext, option: string): void => {
-  ctx.session[CHOSEN_OPTIONS_KEY] = getChosenOptions(ctx).concat(option)
+  ctx.session[CHOSEN_OPTIONS_KEY] = Array.from(
+    new Set(getChosenOptions(ctx)).add(option),
+  )
   const newSavedOptions = getSavedOptions(ctx).filter(
     savedOption => !option.includes(savedOption),
   )
