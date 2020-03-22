@@ -2,11 +2,19 @@ import RedisSession from 'telegraf-session-redis'
 import { NowRequest } from '@now/node'
 import { NowResponse } from '@now/node'
 import Telegraf from 'telegraf'
-import { dinnerHandler, dinnerCallback } from './middlewares/dinnerMiddleware'
+import {
+  dinnerHandler,
+  dinnerCallback,
+} from './middlewares/dinner/dinnerMiddleware'
 import { BotContext } from './types'
 
-function getSecret(key: string): string | undefined {
-  return process.env[key.toUpperCase()]
+function getSecret(key: string): string {
+  const secret = process.env[key.toUpperCase()]
+  if (!secret) {
+    throw new Error('Secret not found: ' + key)
+  } else {
+    return secret
+  }
 }
 
 const TOKEN = getSecret('telegramtoken')

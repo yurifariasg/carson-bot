@@ -1,7 +1,7 @@
-import { Ingredient } from './../data/recipes'
-import R from 'ramda'
-import { recipes } from './../data/recipes'
-import { BotContext } from '../types'
+import { clone, flatten } from 'ramda'
+import { Ingredient } from '../../data/recipes'
+import { recipes } from '../../data/recipes'
+import { BotContext } from '../../types'
 import {
   InlineKeyboardButton,
   ExtraEditMessage,
@@ -65,9 +65,43 @@ const addChosenOption = (ctx: BotContext, option: string): void => {
 }
 
 function getAllIngredientsFor(options: string[]): Ingredient[] {
-  return R.flatten(
+  return flatten(
     recipes.filter(r => options.includes(r.name)).map(r => r.ingredients),
   )
+}
+
+const ingredientAlphabeticallySorter = (a: Ingredient, b: Ingredient): number =>
+  a.name.localeCompare(b.name)
+
+function aggregateQuantities(quantityA: string, quantityB: string): string {
+  const intA = Number(quantityA)
+  const intB = Number(quantityB)
+  if (intA && intB) {
+    return (intA + intB).toString()
+  } else {
+    return quantityA + ', ' + quantityB
+  }
+}
+
+export function aggregateIngredients(ingredients: Ingredient[]): Ingredient[] {
+  const sortedIngredients = ingredients.sort(ingredientAlphabeticallySorter)
+  const aggregateIngredients: Ingredient[] = []
+  for (let index = 0; index < sortedIngredients.length; index++) {
+    const previousIngredient =
+      aggregateIngredients.length > 0
+        ? aggregateIngredients[aggregateIngredients.length - 1]
+        : undefined
+    const ingredient = sortedIngredients[index]
+    if (previousIngredient && previousIngredient.name === ingredient.name) {
+      previousIngredient.quantity = aggregateQuantities(
+        previousIngredient.quantity,
+        ingredient.quantity,
+      )
+    } else {
+      aggregateIngredients.push(clone(ingredient))
+    }
+  }
+  return aggregateIngredients
 }
 
 export const dinnerCallback = (ctx: BotContext): void => {
@@ -80,15 +114,15 @@ export const dinnerCallback = (ctx: BotContext): void => {
   const chosenOptions = getChosenOptions(ctx)
 
   if (chosenFinishOption) {
-    const ingredients = getAllIngredientsFor(chosenOptions)
+    const ingredients = aggregateIngredients(
+      getAllIngredientsFor(chosenOptions),
+    )
     const ingredientsMessage = ingredients
       .map(i => i.name + ' ' + i.quantity)
       .join('\n')
 
-    const chosenOptionsText = chosenOptions.concat(',')
-
     ctx.editMessageText(
-      `Selected Options: ${chosenOptionsText}\n` +
+      `Selected Options: ${chosenOptions.join(',')}\n` +
         'Ingredients:\n' +
         ingredientsMessage,
     )

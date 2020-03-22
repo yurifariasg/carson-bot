@@ -15,7 +15,7 @@
     "noImplicitAny": false,
     "noImplicitThis": false,
     "strictNullChecks": true,
-    "rootDir": "src",
+    "rootDir": "api",
     "outDir": "build",
     "removeComments": true
   }
