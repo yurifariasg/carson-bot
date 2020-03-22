@@ -5,5 +5,10 @@
     "TELEGRAMTOKEN": "@telegramtoken",
     "REDISPASS": "@redispass",
     "REDISHOSTNAME": "@redishostname"
+  },
+  "functions": {
+    "api/*.ts": {
+      "maxDuration": 2
+    }
   }
 }

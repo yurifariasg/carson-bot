@@ -3,6 +3,7 @@ import { BotContext } from '../../types'
 import {
   InlineKeyboardButton,
   ExtraEditMessage,
+  ParseMode,
 } from 'telegraf/typings/telegram-types'
 import {
   aggregateIngredients,
@@ -12,6 +13,8 @@ import {
 
 const SAVED_OPTIONS_KEY = 'savedOptions'
 const CHOSEN_OPTIONS_KEY = 'chosenOptions'
+
+const PARSE_MODE: ParseMode = 'Markdown'
 
 const MAX_OPTIONS = 2
 const FINISH_OPTION = 'finish'
@@ -33,8 +36,8 @@ const clearOptions = (ctx: BotContext): void => {
 
 function createDinnerStr(dinnerOptions: string[] = []): string {
   return `Here are some dinner options${
-    dinnerOptions.length > 0 ? '\nChosen so far' : ''
-  }${dinnerOptions.map(option => '\n' + option)}`
+    dinnerOptions.length > 0 ? '\n\n*Chosen so far*' : ''
+  }${dinnerOptions.map(option => '\n' + option)}\n`
 }
 
 function createInlineKeyboard(
@@ -62,6 +65,7 @@ const getKeyboardExtraForContext = (
   reply_markup: {
     inline_keyboard: createInlineKeyboard(savedOptions),
   },
+  parse_mode: PARSE_MODE,
 })
 
 export const dinnerHandler = (ctx: BotContext): void => {
@@ -82,14 +86,18 @@ function handleFinishOption(ctx: BotContext): void {
 
   const ingredients = aggregateIngredients(getAllIngredientsFor(chosenOptions))
   const ingredientsMessage = ingredients
-    .map(i => i.name + ' ' + i.quantity)
+    .map(i => `*${i.name}* ${i.quantity}`)
     .join('\n')
 
-  ctx.editMessageText(
-    `Selected Options: ${chosenOptions.join(',')}\n` +
-      'Ingredients:\n' +
-      ingredientsMessage,
-  )
+  if (chosenOptions.length > 0) {
+    ctx.editMessageText(
+      `*Selected Options*\n${chosenOptions.join('\n')}\n\n` +
+        ingredientsMessage,
+      { parse_mode: PARSE_MODE },
+    )
+  } else {
+    ctx.editMessageText('No options selected')
+  }
   clearOptions(ctx)
 }
 
